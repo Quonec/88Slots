@@ -53,7 +53,7 @@ export const GAMES = [
       txt("10", 14), txt("J", 14), txt("Q", 13), txt("K", 12), txt("A", 12),
       sym("vase", "🏺", "m", 10), sym("scarab", "🪲", "m", 9),
       sym("eagle", "🦅", "h", 7), sym("eye", "👁️", "h", 6), sym("pharaoh", "👑", "x", 4),
-      { id: "book", glyph: "📖", kind: "both", tier: "x", weight: 2.8 }
+      { id: "book", glyph: "📖", kind: "both", label: "BOOK", tier: "x", weight: 2.8 }
     ],
     scatterPay: { 3: 2, 4: 20, 5: 200 },
     fs: { spins: { 3: 10 }, retrigger: { 3: 10 } },
