@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sim": "node tools/sim.mjs",
+    "sim:check": "node tools/sim.mjs --check"
   },
   "devDependencies": {
     "vite": "^7.1.7"
