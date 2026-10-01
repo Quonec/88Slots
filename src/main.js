@@ -79,7 +79,7 @@ function renderShell(content) {
           <button data-nav="vip">♛ <span>VIP</span></button>
         </nav>
         <div class="bonus-card">
-          <div class="bonus-icon">🎁</div>
+          <div class="bonus-icon">${emojiImg("🎁", "bonus-img")}</div>
           <b>БОНУС</b>
           <small>при первом депозите</small>
           <button>Получить</button>
@@ -132,7 +132,7 @@ function categoryTile(cat, icon, title) {
 
 function gameCard(g) {
   return `<article class="game-card" data-title="${g.title.toLowerCase()}" data-category="${g.category}">
-    <div class="game-art ${g.accent}"><span>${g.icon}</span><b>${g.title}</b><small>${g.tag}</small></div>
+    <div class="game-art themed ${g.accent}" style="--a:${g.theme.a};--b:${g.theme.b}">${emojiImg(g.icon, "card-icon")}<b>${g.title}</b><small>${g.tag}</small></div>
     <div class="game-meta"><b>${g.title}</b><button data-game="${g.id}">ИГРАТЬ</button></div>
   </article>`;
 }
@@ -195,11 +195,29 @@ function renderSlots() {
 let viewToken = 0;           // bumped whenever the game screen is (re)built; stale animations abort
 const ABORT = Symbol("abort");
 
+const BASE = import.meta.env.BASE_URL;
+const emojiURL = e => BASE + "sym/" + [...e].map(c => c.codePointAt(0).toString(16)).filter(c => c !== "fe0f").join("-") + ".webp";
+const emojiImg = (e, cls = "") => `<img class="${cls}" src="${emojiURL(e)}" alt="" draggable="false">`;
+
+function preloadArt() {
+  const seen = new Set();
+  for (const g of GAMES) for (const s of [{ glyph: g.icon }, ...g.symbols]) {
+    if (!s.glyph || s.text || s.gem || seen.has(s.glyph)) continue;
+    seen.add(s.glyph);
+    new Image().src = emojiURL(s.glyph);
+  }
+}
+
 function symbolHTML(g, id, mult = 1, cls = "", row = 0) {
   const s = prepare(g).sym[id];
   const kind = s.kind ? `t-${s.kind}` : `t-${s.tier || "l"}`;
   const color = s.color ? `--c:${s.color};` : "";
-  return `<div class="symbol ${kind} ${cls}" style="${color}--d:${row}">${s.gem ? `<span class="gem-wrap"><span class="gem" style="--g:${s.gem}"></span></span>` : `<span class="${s.text ? "txt" : "emo"}">${s.glyph}</span>`}${mult > 1 ? `<i class="mult">×${mult}</i>` : ""}</div>`;
+  let art;
+  if (s.gem) art = `<span class="gem-wrap"><span class="gem" style="--g:${s.gem}"></span></span>`;
+  else if (s.text) art = `<span class="txt">${s.glyph}</span>`;
+  else art = emojiImg(s.glyph, "art");
+  const label = s.label || (s.kind === "wild" || s.kind === "both" ? "WILD" : s.kind === "scatter" ? "SCATTER" : "");
+  return `<div class="symbol ${kind} ${cls}" style="${color}--d:${row}">${art}${label ? `<b class="tag ${s.kind === "scatter" ? "sm" : ""}">${label}</b>` : ""}${mult > 1 ? `<i class="mult">×${mult}</i>` : ""}</div>`;
 }
 
 const reelsEl = () => $("reels");
@@ -252,6 +270,11 @@ function overlay(html, ms = 0, cls = "") {
   });
 }
 
+function premiumGlyph(g) {
+  const s = g.symbols.find(x => x.tier === "x" && !x.kind && !x.text && !x.gem);
+  return s ? s.glyph : g.icon;
+}
+
 function renderGame() {
   const g = gameById(state.gameId);
   viewToken++;
@@ -268,8 +291,8 @@ function renderGame() {
           <button class="tool-btn" id="sound" title="Звук">${state.muted ? "🔇" : "🔊"}</button>
         </div>
       </div>
-      <div class="slot-stage" id="stage">
-        <div class="machine-top"><span>${g.icon}</span> ${g.title} <span>${g.icon}</span></div>
+      <div class="slot-stage" id="stage" style="--artL:url(${emojiURL(g.icon)});--artR:url(${emojiURL(premiumGlyph(g))})">
+        <div class="machine-top">${emojiImg(g.icon)}<span class="logo-text">${g.title}</span>${emojiImg(g.icon)}</div>
         <div class="fs-banner" id="fsBanner" hidden></div>
         <div class="reels-wrap"><div class="reels" id="reels" style="--cols:${g.cols};--rows:${g.rows}">${Array.from({ length: g.cols }, () => `<div class="reel"></div>`).join("")}</div></div>
       </div>
@@ -432,7 +455,7 @@ async function animate(g, res, stake, wait) {
     clearMarks();
     drawBoard(g, res.steps[0].grid, res.steps[0].mult);
     res.expandReels.forEach(c => R.children[c].classList.add("expand"));
-    if (sp) setWinLine(`Раскрывается ${sp.glyph}${res.bookWin ? ` — <b>${money(res.bookWin)}</b>` : ""}`);
+    if (sp) setWinLine(`Раскрывается ${symbolHTML(g, res.special).replace("symbol", "symbol mini")}${res.bookWin ? ` — <b>${money(res.bookWin)}</b>` : ""}`);
     await wait(700);
     res.expandReels.forEach(c => R.children[c].classList.remove("expand"));
   }
@@ -489,7 +512,7 @@ async function animate(g, res, stake, wait) {
   if (res.fsAwarded) {
     sfx.feature();
     const f = g.features || {};
-    const extra = !res.inFS && res.special ? `<div class="ov-sub">Особый символ: <span class="ov-glyph">${prepare(g).sym[res.special].glyph}</span></div>` : "";
+    const extra = !res.inFS && res.special ? `<div class="ov-sub">Особый символ: ${symbolHTML(g, res.special).replace("symbol", "symbol mini big")}</div>` : "";
     const sticky = !res.inFS && f.stickyWilds ? `<div class="ov-sub">Wild остаются на местах</div>` : "";
     await overlay(`<div class="ov-title">FREE SPINS</div><div class="ov-num">${res.inFS ? "+" : ""}${res.fsAwarded}</div><div class="ov-sub">${res.inFS ? "дополнительных вращений" : "бесплатных вращений"}</div>${extra}${sticky}`, 2600, "feature");
     await wait(0);
@@ -547,4 +570,5 @@ function openGame(id) {
   renderGame();
 }
 
+preloadArt();
 renderLobby();
